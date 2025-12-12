@@ -1,14 +1,15 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-#include <ctime>   
-#include <cstdlib> 
+#include <ctime>  
+#include <cstdlib>
 #include <cctype>  
 #include <iomanip>  
 
 using namespace std;
 
-const int MAX_Q = 10;
+const int MAX_Q = 100;
+
 const int Q_PER_GAME = 10;
 const int MAX_LIFELINES = 4;
 
@@ -56,7 +57,7 @@ int main() {
         if (!(cin >> choice)) {
             cout << "Invalid input. Please enter a number.\n";
             cin.clear();
-            cin.ignore(10000, '\n'); // To clean the buffer, so program not show error 
+            cin.ignore(10000, '\n'); // To clean the buffer, so program not show error
             delay(1);
             continue;
         }
@@ -106,6 +107,7 @@ void showMainMenu() {
 }
 
 void shuffle(int arr[], int n) {
+    if (n <= 0) return;
     for (int i = n - 1; i > 0; i--) { // i 1-5 is trh huga
         int j = rand() % (i + 1); // first element random swap with [i]
         int temp = arr[i];
@@ -128,62 +130,79 @@ bool loadQuestions(string filename, int difficulty) {
     int currentLevel = 0;
     char currentAnswer = ' ';
 
-    while (getline(file, line)) { // file sy read krna , string line me add krna 
+    while (getline(file, line)) {
 
-        if (!line.empty() && line.back() == '\r') line.pop_back(); // empty hutu back call krta
+        // 1. Remove carriage return for Windows compatibility
+        if (!line.empty() && line.back() == '\r') line.pop_back();
 
-        if (step == 0) { // first phase of parsing
-            if (line.empty()) { //empty hutu skip
-                continue;
+        // 2. CRITICAL FIX: Skip lines that are empty or contain only spaces
+        // This prevents blank lines from being read as Questions or Options
+        bool isOnlySpaces = true;
+        for (size_t i = 0; i < line.length(); i++) {
+            if (!isspace(static_cast<unsigned char>(line[i]))) {
+                isOnlySpaces = false;
+                break;
             }
-            size_t p = 0; // space ignore
-            while (p < line.size() && isspace(static_cast<unsigned char>(line[p]))) p++;
+        }
+        if (line.empty() || isOnlySpaces) {
+            continue; // Skip this loop iteration immediately
+        }
+
+        // Safety Break if we exceed buffer
+        if (totalQ >= MAX_Q) break;
+
+        // 3. Parsing Steps
+        if (step == 0) { // Looking for Difficulty Number (1, 2, or 3)
+
+            // Search the line for a digit (handles invisible BOM characters)
+            size_t p = 0;
+            while (p < line.size() && !isdigit(static_cast<unsigned char>(line[p]))) {
+                p++;
+            }
+
+            // If no digit found on this line, skip it
             if (p >= line.size()) continue;
 
-            char c = line[p]; //first charcter tak lata
-            if (!isdigit(static_cast<unsigned char>(c))) {
-                continue; // agar no space charcter tu skip
-            }
+            int val = line[p] - '0'; // Convert char to int
 
-            currentLevel = c - '0'; //digit ko integer me convert
-            if (currentLevel < 1 || currentLevel > 3) {
-                continue;
+            if (val >= 1 && val <= 3) {
+                currentLevel = val;
+                step++; // Found it, move to Step 1 (Question Text)
             }
-
-            currentLevel = c - '0';
-            if (currentLevel < 1 || currentLevel > 3) {
-                continue;
-            }
-
-            currentLevel = c - '0';
-            if (currentLevel < 1 || currentLevel > 3) {
-                continue;
-            }
-
-            currentLevel = c - '0';
-            if (currentLevel < 1 || currentLevel > 3) {
-                continue;
-            }
+        }
+        else if (step == 1) {
+            qText[totalQ] = line;
             step++;
         }
-        else if (step == 1) { qText[totalQ] = line; step++; }
         else if (step == 2) { qOptions[totalQ][0] = line; step++; }
         else if (step == 3) { qOptions[totalQ][1] = line; step++; }
         else if (step == 4) { qOptions[totalQ][2] = line; step++; }
         else if (step == 5) { qOptions[totalQ][3] = line; step++; }
         else if (step == 6) {
-            if (!line.empty()) {
-                char c = line[0];
-                if (c >= '1' && c <= '4') c = 'A' + (c - '1');
-                currentAnswer = toupper(static_cast<unsigned char>(c));
+            // Looking for Answer (A, B, C, D)
+            // We strip spaces to find the single letter
+            size_t p = 0;
+            while (p < line.size() && isspace(static_cast<unsigned char>(line[p]))) p++;
 
-                if (currentLevel == difficulty && totalQ < MAX_Q) {
-                    qLevel[totalQ] = currentLevel;
-                    qAnswer[totalQ] = currentAnswer;
-                    totalQ++;
+            if (p < line.size()) {
+                char c = toupper(static_cast<unsigned char>(line[p]));
+
+                // Allow answers like '1' (which means A)
+                if (c >= '1' && c <= '4') c = 'A' + (c - '1');
+
+                if (c >= 'A' && c <= 'D') {
+                    currentAnswer = c;
+
+                    // If difficulty matches, save the question
+                    if (currentLevel == difficulty) {
+                        qLevel[totalQ] = currentLevel;
+                        qAnswer[totalQ] = currentAnswer;
+                        totalQ++;
+                    }
                 }
             }
-            step = 0; // new Q
+            step = 0; // Reset to look for the next Difficulty number
+
         }
     }
     file.close();
@@ -272,7 +291,7 @@ void startNewQuiz() {
     delay(3);
 
     for (int i = 0; i < Q_PER_GAME; i++) {
-        int currentBankIndex = selectedIndices[i]; //konsa  Q kis pole sy 
+        int currentBankIndex = selectedIndices[i]; //konsa  Q kis pole sy
         int original_diff = qLevel[currentBankIndex];
 
         clearScreen();
