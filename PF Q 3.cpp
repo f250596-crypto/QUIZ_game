@@ -568,3 +568,4 @@ void reviewMode(int selectedIndices[]) {
         cout << "Your answer: " << userAns[wrongListIndex] << " | Correct: " << qAnswer[originalBankIndex] << endl << endl;
     }
 }
+
