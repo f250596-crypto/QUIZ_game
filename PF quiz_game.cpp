@@ -214,6 +214,7 @@ void startNewQuiz() {
     clearScreen(); // on wrong input clear the screen
     cout << "Enter your name: ";
 
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
     getline(cin, playerName);
     while (true) {
         bool valid = true;
@@ -614,6 +615,6 @@ void reviewMode(int selectedIndices[]) {
 
         cout << "Q" << wrongListIndex + 1 << ": " << qText[originalBankIndex] << endl;
         cout << "Your answer: " << userAns[wrongListIndex] << " | Correct: " << qAnswer[originalBankIndex] << endl << endl;
+        delay(5);
     }
 }
-
